@@ -1,11 +1,14 @@
-use ntex::{web::{self, App, HttpResponse, HttpServer, resource, Error as WebError, HttpRequest}, server};
-use std::sync::{Mutex, atomic::{AtomicBool, Ordering}, Arc};
+use chrono::prelude::*;
+use ntex::web::{self, resource, App, Error as WebError, HttpRequest, HttpResponse, HttpServer};
+use serde::{Deserialize, Serialize};
 use std::fs::read_to_string;
-use std::path::{PathBuf, Path};
+use std::path::{Path, PathBuf};
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc, Mutex,
+};
 use std::thread;
 use std::time::Duration;
-use chrono::prelude::*;
-use serde::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize)]
 enum IpAddrKind {
@@ -30,7 +33,10 @@ async fn write_to_json(data: web::types::State<AppStateWithCounter>) {
     todo!()
 }
 
-async fn index(data: web::types::State<AppStateWithCounter>, req: HttpRequest) -> Result<HttpResponse, WebError> {
+async fn index(
+    data: web::types::State<AppStateWithCounter>,
+    req: HttpRequest,
+) -> Result<HttpResponse, WebError> {
     let mut counter = data.counter.try_lock().expect("poisoned lock");
     let mut time = data.time.try_lock().expect("poisoned lock");
     let ip = if req.connection_info().remote().is_some() {
@@ -52,7 +58,8 @@ async fn main() -> std::io::Result<()> {
     let r = running.clone();
     ctrlc::set_handler(move || {
         r.store(false, Ordering::SeqCst);
-    }).expect("Error setting Ctrl-C handler");
+    })
+    .expect("Error setting Ctrl-C handler");
 
     let current_dir = std::env::current_dir()?;
     let path = PathBuf::from(current_dir).join("./visitors.json");
@@ -71,14 +78,13 @@ async fn main() -> std::io::Result<()> {
         Local::now().to_rfc3339()
     };
 
-
     let server = HttpServer::new(move || {
         App::new()
-        .service(resource("/").to(index))
-        .state(AppStateWithCounter {
-            counter: Mutex::new(last_count),
-            time: Mutex::new(last_time.clone()),
-        })
+            .service(resource("/").to(index))
+            .state(AppStateWithCounter {
+                counter: Mutex::new(last_count),
+                time: Mutex::new(last_time.clone()),
+            })
     })
     .bind("127.0.0.1:8080")?;
 
@@ -92,7 +98,6 @@ async fn main() -> std::io::Result<()> {
             thread::sleep(Duration::from_millis(100));
         }
         println!("Stopping server...");
-        let new_count = server_handle_clone.;
         futures::executor::block_on(server_handle_clone.stop(true));
     });
 
