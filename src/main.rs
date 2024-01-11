@@ -27,7 +27,7 @@ struct AppStateWithCounter {
 }
 
 async fn write_to_json(data: web::types::State<AppStateWithCounter>) {
-    let
+    todo!()
 }
 
 async fn index(data: web::types::State<AppStateWithCounter>, req: HttpRequest) -> Result<HttpResponse, WebError> {
