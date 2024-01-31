@@ -1,105 +1,121 @@
-use chrono::prelude::*;
+use chrono::{prelude::*, Duration};
+use ntex_session::CookieSession;
 use ntex::web::{self, resource, App, Error as WebError, HttpRequest, HttpResponse, HttpServer};
+use serde_json::{from_reader, to_writer};
+use std::{
+    fs::{create_dir, File},
+    path::Path,
+};
 use serde::{Deserialize, Serialize};
-use std::fs::read_to_string;
-use std::path::{Path, PathBuf};
 use std::sync::{
-    atomic::{AtomicBool, Ordering},
     Arc, Mutex,
 };
-use std::thread;
-use std::time::Duration;
-
-#[derive(Serialize, Deserialize)]
-enum IpAddrKind {
-    V4,
-    V6,
-}
 
 #[derive(Serialize, Deserialize)]
 struct JsonState {
-    last_ip: String,
-    kind: IpAddrKind,
     last_count: i32,
     last_time: String,
 }
 
-struct AppStateWithCounter {
-    time: Mutex<String>,
-    counter: Mutex<i32>, // <- Mutex is necessary to mutate safely across threads
+struct AppState {
+    time: String,
+    counter: i32, // <- Mutex is necessary to mutate safely across threads
 }
 
-async fn write_to_json(data: web::types::State<AppStateWithCounter>) {
-    todo!()
+impl Default for JsonState {
+    fn default() -> Self {
+         JsonState { last_count: 0_i32, last_time: Local::now().to_rfc3339()  }
+    }
 }
+
+
+async fn read_from_json(path: &Path) -> Result<JsonState, std::io::Error> {
+    if ! path.is_dir() {
+        create_dir(path)?;
+    }
+    let file_path = path.join("data.json");
+    if ! file_path.is_file() {
+        return Err(std::io::ErrorKind::NotFound.into());
+    }
+    let file = File::open(file_path)?;
+    let data: JsonState = from_reader(file)?;
+    Ok(data)    
+}
+
+async fn write_to_json(path: &Path, data: JsonState) -> Result<(), std::io::Error> {
+    if ! path.is_dir() {
+        create_dir(path)?;
+    }
+    let file_path = path.join("data.json");
+    let file = File::create(file_path)?;
+    to_writer(&file, &data)?;
+    Ok(())
+}
+
 
 async fn index(
-    data: web::types::State<AppStateWithCounter>,
-    req: HttpRequest,
+    data: web::types::State<Arc<Mutex<AppState>>>,
+    session: ntex_session::Session
 ) -> Result<HttpResponse, WebError> {
-    let mut counter = data.counter.try_lock().expect("poisoned lock");
-    let mut time = data.time.try_lock().expect("poisoned lock");
-    let ip = if req.connection_info().remote().is_some() {
-        req.connection_info().remote().unwrap().to_string()
-    } else {
-        "Could not get IP".to_string()
-    };
-    let last_time = time.clone();
-    *time = Local::now().to_rfc3339();
+    let mut data = data.try_lock().expect("poisoned_lock");
+    let current_dir = std::env::current_dir()?;
+    let state_path = current_dir.join("state");
 
-    *counter += 1; // <- access counter inside Mutex
-    let body = format!("Hello world, you are visitor number: {} \nYour IP address is: {}, \nLast time: {} \nTime you visited: {}", counter, ip, last_time, time);
+    if session.get::<String>("session_time")?.is_some() {
+        let time_since_last_visit: String = session.get("session_time")?.unwrap();
+        let time_here = DateTime::parse_from_rfc3339(&time_since_last_visit).expect("Can't convert string to time");
+        let time_difference = Local::now().signed_duration_since(&time_here);
+        let return_in = (Duration::hours(22)-time_difference).num_hours();
+        if time_difference < Duration::hours(22) {
+            let forbidden_body = format!("Forbidden, return in: {}h", return_in);
+            return Ok(HttpResponse::Forbidden().body(forbidden_body));
+        } else {
+            session.set("session_time", Local::now().to_rfc3339())?;
+        }
+    } else {
+        session.set("session_time", Local::now().to_rfc3339())?;
+    }
+
+    let last_time = data.time.clone();
+    data.time = Local::now().to_rfc3339();
+    data.counter += 1; // <- access counter inside Mutex
+
+    let new_data = JsonState {
+        last_time: data.time.clone(),
+        last_count: data.counter.clone(),
+    };
+    write_to_json(&state_path, new_data).await?;
+     
+    let body = format!("Hello world, you are visitor number: {} \nLast time: {} \nTime you visited: {}", data.counter, last_time, data.time);
+    
     Ok(HttpResponse::Ok().body(body))
 }
 
 #[ntex::main]
 async fn main() -> std::io::Result<()> {
-    let running = Arc::new(AtomicBool::new(true));
-    let r = running.clone();
-    ctrlc::set_handler(move || {
-        r.store(false, Ordering::SeqCst);
-    })
-    .expect("Error setting Ctrl-C handler");
-
     let current_dir = std::env::current_dir()?;
-    let path = PathBuf::from(current_dir).join("./visitors.json");
-    let last_count = if Path::exists(&path) {
-        let json = read_to_string("./visitors.json")?;
-        let data: JsonState = serde_json::from_str(&json)?;
-        data.last_count
+    let state_path = current_dir.join("state");
+
+    let last_data = if read_from_json(&state_path).await.is_ok() {
+        read_from_json(&state_path).await?
     } else {
-        0
-    };
-    let last_time = if Path::exists(&path) {
-        let json = read_to_string("./visitors.json")?;
-        let data: JsonState = serde_json::from_str(&json)?;
-        data.last_time
-    } else {
-        Local::now().to_rfc3339()
+        JsonState::default()
     };
 
-    let server = HttpServer::new(move || {
+    let last_count = last_data.last_count;
+    let last_time = last_data.last_time;
+    
+    let state = Arc::new(Mutex::new(AppState {
+        counter: last_count,
+        time: last_time
+    }));
+
+    HttpServer::new(move || {
         App::new()
             .service(resource("/").to(index))
-            .state(AppStateWithCounter {
-                counter: Mutex::new(last_count),
-                time: Mutex::new(last_time.clone()),
-            })
-    })
-    .bind("127.0.0.1:8080")?;
-
-    let server_handle = server.run();
-
-    // Spawn a new thread to listen for the SIGINT signal
-    let running_clone = running.clone();
-    let server_handle_clone = server_handle.clone();
-    tokio::task::spawn_blocking(move || {
-        while running_clone.load(Ordering::SeqCst) {
-            thread::sleep(Duration::from_millis(100));
-        }
-        println!("Stopping server...");
-        futures::executor::block_on(server_handle_clone.stop(true));
-    });
-
-    server_handle.await
+            .state(state.clone())
+            .wrap(
+                CookieSession::private(&[0; 32]).name("qrcode").secure(false)
+            )
+    }).bind("127.0.0.1:8080")?.run().await
 }
