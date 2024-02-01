@@ -1,0 +1,14 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.status-header-container {
+  @apply bg-sky-50 flex flex-col items-center p-10;
+  .status-header {
+    @apply text-green-400 text-3xl font-ubuntu font-bold;
+  }
+}
+
+.problem {
+  @apply text-red-400 text-3xl;
+}

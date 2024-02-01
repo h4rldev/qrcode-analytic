@@ -1,0 +1,8 @@
+{
+	"devDependencies": {
+		"@iconify-json/logos": "^1.1.42",
+		"@iconify-json/mdi": "^1.1.64",
+		"@iconify/tailwind": "^0.1.4",
+		"tailwindcss-language-server": "^0.0.1"
+	}
+}

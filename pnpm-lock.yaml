@@ -1,0 +1,48 @@
+lockfileVersion: '6.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+devDependencies:
+  '@iconify-json/logos':
+    specifier: ^1.1.42
+    version: 1.1.42
+  '@iconify-json/mdi':
+    specifier: ^1.1.64
+    version: 1.1.64
+  '@iconify/tailwind':
+    specifier: ^0.1.4
+    version: 0.1.4
+  tailwindcss-language-server:
+    specifier: ^0.0.1
+    version: 0.0.1
+
+packages:
+
+  /@iconify-json/logos@1.1.42:
+    resolution: {integrity: sha512-/f+frtPm3m3Z30oy8Pk+QqRDkbmAiIaWGPl5CmsCXm15MVfvw9a/V/gD7WzdyuSGAZcFuQaqbHXj92y/n+2ifg==}
+    dependencies:
+      '@iconify/types': 2.0.0
+    dev: true
+
+  /@iconify-json/mdi@1.1.64:
+    resolution: {integrity: sha512-zGeo5TjhNFAY6FmSDBLAzDO811t77r6v/mDi7CAL9w5eXqKez6bIjk8R9AL/RHIeq44ALP4Ozr4lMqFTkHr7ug==}
+    dependencies:
+      '@iconify/types': 2.0.0
+    dev: true
+
+  /@iconify/tailwind@0.1.4:
+    resolution: {integrity: sha512-U7RzcU2fkwOfMDsGQ3mtpLIaApSnqb+vgcJJknPPbg8/NF5s7tI1o5otEMfcpnLGk4PbYB8bxmKTz7IJVUlU2Q==}
+    dependencies:
+      '@iconify/types': 2.0.0
+    dev: true
+
+  /@iconify/types@2.0.0:
+    resolution: {integrity: sha512-+wluvCrRhXrhyOmRDJ3q8mux9JkKy5SJ/v8ol2tu4FVjyYvtEzkc/3pK15ET6RKg4b4w4BmTk1+gsCUhf21Ykg==}
+    dev: true
+
+  /tailwindcss-language-server@0.0.1:
+    resolution: {integrity: sha512-lMoncp8ICeUA1kLVaiKARRUKQxRndKtIelydoMgg3P2ZjAIfcptN8Nin848+VClr2wGoM3+9RZ71sDG1YrnX1g==}
+    hasBin: true
+    dev: true
