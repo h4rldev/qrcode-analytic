@@ -2,13 +2,37 @@
 @tailwind components;
 @tailwind utilities;
 
-.status-header-container {
-  @apply bg-sky-50 flex flex-col items-center p-10;
-  .status-header {
+body {
+ @apply flex flex-col gap-3 bg-gray-900 text-white; 
+}
+
+
+header.status-header-container {
+  @apply bg-gray-800 flex flex-col items-center p-10;
+  h1.status-header {
     @apply text-green-400 text-3xl font-ubuntu font-bold;
   }
 }
 
-.problem {
-  @apply text-red-400 text-3xl;
+
+main {
+  section.contents {
+    @apply flex flex-col items-center justify-center bg-gray-800;
+    div.info-container {
+      @apply p-10;
+    }
+  }
+}
+
+
+footer {
+  @apply p-10 flex flex-col items-center justify-center;
+  p {
+    a {
+      @apply inline-block;
+      span {
+        @apply inline-block align-middle;
+      }
+    }
+  }
 }

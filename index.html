@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -26,16 +26,21 @@
   </head>
   <body>
     <header class="status-header-container">
-      <h1 class="status-header" hx-get="/header" hx-swap="innerHTML" hx-target="this" hx-trigger="load"> Ett problem uppstod! </h1> 
+      <h1 class="status-header" hx-get="/header" hx-swap="innerHTML" hx-target="this" hx-trigger="load"></h1> 
     </header> 
 
     <main>
-     <section class="contents" hx-get="/body" hx-swap="innerHTML" hx-target="this" hx-trigger="load">
-        <h1 class="problem">Ett problem uppstod! </h1>
-     </section> 
+      <section class="contents">
+        <div class="info-container">
+          <p class="visitor" hx-get="/body/visitor" hx-swap="innerHTML" hx-target="this" hx-trigger="load"></p>
+          <p class="lasttime" hx-get="/body/last_time" hx-swap="innerHTML" hx-target="this" hx-trigger="load"></p>
+          <p class="yourtime" hx-get="/body/your_time" hx-swap="innerHTML" hx-target="this" hx-trigger="load"></p>
+        </div>
+      </section> 
     </main>
     <footer>
-      <p> Made with ❤ by <a href="https://github.com/h4rldev" target="_blank">h4rl</a> </p>
+      <p> Made with ❤ by <a href="https://github.com/h4rldev" target="_blank"> h4rl </a> </p>
+      <p> This website uses <a href="https://ntex.rs" target="_blank"> <span class="icon-[simple-icons--rust]"></span> ntex </a> and <a href="https://htmx.org" target="_blank"> <span class="icon-[simple-icons--htmx]"></span> HTMX </a> </p>
     </footer>
   </body>
 </html>
