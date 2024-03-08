@@ -3,12 +3,12 @@
 @tailwind utilities;
 
 body {
- @apply flex flex-col gap-3 bg-gray-900 text-white; 
+ @apply flex flex-col gap-3 bg-gray-900 text-white min-h-screen; 
 }
 
 
 header.status-header-container {
-  @apply bg-gray-800 flex flex-col items-center p-10;
+  @apply bg-gray-800 flex flex-col items-center p-20 rounded-md;
   h1.status-header {
     @apply text-green-400 text-3xl font-ubuntu font-bold;
   }
@@ -17,22 +17,20 @@ header.status-header-container {
 
 main {
   section.contents {
-    @apply flex flex-col items-center justify-center bg-gray-800;
-    div.info-container {
-      @apply p-10;
-    }
+    @apply flex flex-col items-center justify-center bg-gray-800 p-24 text-lg;
+    @apply rounded-md;
   }
 }
 
 
 footer {
-  @apply p-10 flex flex-col items-center justify-center;
-  p {
-    a {
-      @apply inline-block;
-      span {
-        @apply inline-block align-middle;
-      }
-    }
+  @apply flex flex-col gap-y-2 items-center justify-center align-middle;
+  @apply p-24;
+  .credits {
+    @apply flex flex-row gap-x-2;
+  }
+
+  .credit-list {
+    @apply flex flex-row gap-2 text-lg;
   }
 }

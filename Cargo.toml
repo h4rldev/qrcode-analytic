@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-ntex = { version = "1.0.0", features = ["tokio"] }
+ntex = { version = "1.0.0", features = ["tokio", "compress"] }
 tokio = { version = "1.35.1", features = ["full"] }
 serde = { version = "1.0.195", features = ["derive"] }
 chrono = "0.4.31"

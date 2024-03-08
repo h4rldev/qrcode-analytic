@@ -3,8 +3,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="htmx-config" content='{"includeIndicatorStyles":false}'>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; img-src 'self' data:;">
     <link rel="stylesheet" type="text/css" href="./styles/styles.css" />
-    <script src="./js/htmx.min.js"></script>
+    <script src="./js/htmx.min.js" defer></script>
     
     <meta name="title" content="NTI Gymnasiet - Karlstad: Lunch" />
     <meta name="description" content="NTI Gymnasiet - Karlstad: Lunch Analytik" />
@@ -22,6 +24,7 @@
     <meta property="twitter:title" content="NTI Gymnasiet - Karlstad: Lunch" />
     <meta property="twitter:description" content="NTI Gymnasiet - Karlstad: Lunch Analytik" />
     <meta property="twitter:image" content="./assets/image.webp" />
+    <link rel="icon" type="image/webp" href="./assets/image.webp" />
     <title> NTI Lunch </title>
   </head>
   <body>
@@ -39,8 +42,24 @@
       </section> 
     </main>
     <footer>
-      <p> Made with ❤ by <a href="https://github.com/h4rldev" target="_blank"> h4rl </a> </p>
-      <p> This website uses <a href="https://ntex.rs" target="_blank"> <span class="icon-[simple-icons--rust]"></span> ntex </a> and <a href="https://htmx.org" target="_blank"> <span class="icon-[simple-icons--htmx]"></span> HTMX </a> </p>
+      <section>
+        Made with ❤ by <a href="https://github.com/h4rldev" target="_blank"> h4rl </a>
+      </section>
+      <section class="credits">
+        <p> This website is powered by </p>
+        <ul class="credit-list">
+          <li>
+            <a href="https://ntex.rs" target="_blank" class="credit-icon">
+              <span class="icon-[simple-icons--rust]"></span>
+            </a>
+          </li>
+          <li>
+            <a href="https://htmx.org" target="_blank" class="credit-icon">
+              <span class="icon-[simple-icons--htmx]"></span>
+            </a>
+          </li>
+        </ul>
+      </section>
     </footer>
   </body>
 </html>

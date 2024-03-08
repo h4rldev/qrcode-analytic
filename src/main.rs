@@ -1,6 +1,6 @@
 use chrono::{prelude::*, Duration};
 use ntex_session::CookieSession;
-use ntex::web::{self, get, App, Error as WebError, HttpResponse, HttpServer};
+use ntex::web::{self, get, App, Error as WebError, HttpRequest, HttpResponse, HttpServer};
 use serde_json::{from_reader, to_writer};
 use std::{
     fs::{create_dir, File},
@@ -54,12 +54,12 @@ impl Default for JsonData {
     }
 }
 
-async fn can_user_enter(session: ntex_session::Session) -> Result<bool, WebError> { 
+async fn can_user_enter(session: ntex_session::Session) -> Result<bool, WebError> {
     if session.get::<String>("session_time")?.is_some() {
         let time_since_last_visit: String = session.get("session_time")?.expect("Can't get cookie despite being some.");
         let time_here = DateTime::parse_from_rfc3339(&time_since_last_visit).expect("Can't parse from rfc3339");
         let time_difference = Local::now().signed_duration_since(&time_here);
-        if time_difference < Duration::hours(22) {
+        if time_difference < Duration::try_hours(22).expect("Can't get hours") {
             return Ok(false);
         }
     } else {
@@ -94,7 +94,12 @@ async fn write_to_json(path: &Path, json_data: JsonData) -> Result<(), std::io::
 
 
 #[get("/header")]
-async fn header(session: ntex_session::Session, data: web::types::State<Arc<Mutex<AppData>>>) -> Result<HttpResponse, WebError> {
+async fn header(session: ntex_session::Session, data: web::types::State<Arc<Mutex<AppData>>>, req: HttpRequest) -> Result<HttpResponse, WebError> {
+    
+    if req.headers().get("HX-Request").is_none() {
+        return Ok(HttpResponse::Forbidden().finish());
+    }
+
     let data = &data.try_lock().expect("poisoned_lock").state;
 
     let response = if can_user_enter(session).await? {
@@ -129,7 +134,12 @@ async fn header(session: ntex_session::Session, data: web::types::State<Arc<Mute
 
 
 #[get("/visitor")]
-async fn visitor(data: web::types::State<Arc<Mutex<AppData>>>, session: ntex_session::Session) -> Result<HttpResponse, WebError> {
+async fn visitor(data: web::types::State<Arc<Mutex<AppData>>>, session: ntex_session::Session, req: HttpRequest) -> Result<HttpResponse, WebError> {
+    
+    if req.headers().get("HX-Request").is_none() {
+        return Ok(HttpResponse::Forbidden().finish());
+    }
+
     let mut data = data.try_lock().expect("poisoned_lock");
     let state: &mut Vec<AppState> = &mut data.state;
     let date = Local::now().date_naive().to_string();
@@ -145,13 +155,18 @@ async fn visitor(data: web::types::State<Arc<Mutex<AppData>>>, session: ntex_ses
         let response = format!("You're visitor no. {}", visitor);
         Ok(HttpResponse::Ok().content_type("text/html").body(response))
     } else {
-        Ok(HttpResponse::Forbidden().finish())
+        Ok(HttpResponse::Ok().finish())
     };
     response
 }
 
 #[get("/last_time")]
-async fn lasttime(data: web::types::State<Arc<Mutex<AppData>>>) -> Result<HttpResponse, WebError> {
+async fn lasttime(data: web::types::State<Arc<Mutex<AppData>>>, req: HttpRequest) -> Result<HttpResponse, WebError> {
+    
+    if req.headers().get("HX-Request").is_none() {
+        return Ok(HttpResponse::Forbidden().finish());
+    }
+
     let data = &data.try_lock().expect("poisoned_lock").state;
     let current_data = data.first().expect("Can't get latest entry");
     let time = &current_data.time;
@@ -162,17 +177,29 @@ async fn lasttime(data: web::types::State<Arc<Mutex<AppData>>>) -> Result<HttpRe
 }
 
 #[get("/your_time")]
-async fn yourtime(data: web::types::State<Arc<Mutex<AppData>>>, session: ntex_session::Session) -> Result<HttpResponse, WebError> {
-    let data = data.try_lock().expect("poisoned_lock");
-    let state = &data.state;
+async fn yourtime(data: web::types::State<Arc<Mutex<AppData>>>, session: ntex_session::Session, req: HttpRequest) -> Result<HttpResponse, WebError> {
+
+    if req.headers().get("HX-Request").is_none() {
+        return Ok(HttpResponse::Forbidden().finish());
+    }
+
+    let mut data = data.try_lock().expect("poisoned_lock");
+    let state: &mut Vec<AppState> = &mut data.state;
     let mut first = state.first().expect("Can't get latest entry").clone();
 
     let response = if can_user_enter(session).await? {
-        first.time = Local::now().to_rfc3339();
-        let response = format!("Time you checked in: {}", &first.time);
+        first.time = Local::now().time().to_string();
+        if first.date != Local::now().date_naive().to_string() {
+            state.push(AppState {
+                date: Local::now().date_naive().to_string(),
+                counter: first.counter,
+                time: first.time.clone()
+            })
+        }
+        let response = format!("Time you checked in: {} {}", &first.date, &first.time);
         Ok(HttpResponse::Ok().content_type("text/html").body(response))
     } else {
-        Ok(HttpResponse::Forbidden().finish())
+        Ok(HttpResponse::Ok().finish())
     };
     
     response
@@ -211,6 +238,7 @@ async fn main() -> std::io::Result<()> {
 
     HttpServer::new(move || {
         App::new()
+            .wrap(web::middleware::Compress::default())
             .service(header)
             .service(index)
             .service(
