@@ -1,7 +1,9 @@
 use chrono::{prelude::*, Duration};
+use tokio::sync::Mutex;
 use ntex_session::CookieSession;
 use ntex::web::{self, get, App, Error as WebError, HttpRequest, HttpResponse, HttpServer};
 use serde_json::{from_reader, to_writer};
+use core::panic;
 use std::{
     fs::{create_dir, File},
     path::Path,
@@ -9,9 +11,7 @@ use std::{
 #[allow(unused_imports)]
 use tracing::{info, debug, trace, error, warn};
 use serde::{Deserialize, Serialize};
-use std::sync::{
-    Arc, Mutex,
-};
+use std::sync::Arc;
 
 use http::{index, files, get_from_subdir};
 
@@ -140,24 +140,43 @@ async fn visitor(data: web::types::State<Arc<Mutex<AppData>>>, session: ntex_ses
         return Ok(HttpResponse::Forbidden().finish());
     }
 
-    let mut data = data.try_lock().expect("poisoned_lock");
-    let state: &mut Vec<AppState> = &mut data.state;
-    let date = Local::now().date_naive().to_string();
-    
-    let response = if can_user_enter(session).await? {
-        state.iter_mut()
-            .filter(|item| item.date == date)
-            .for_each(|item| {
-                item.counter += 1;
-            });
+    if ! can_user_enter(session).await? {
+        return Ok(HttpResponse::Ok().finish());
+    }
 
-        let visitor = data.state.first().expect("Can't get latest entry").counter;
-        let response = format!("You're visitor no. {}", visitor);
-        Ok(HttpResponse::Ok().content_type("text/html").body(response))
-    } else {
-        Ok(HttpResponse::Ok().finish())
+    let mut data = data.try_lock().expect("poisoned_lock");
+    let current_date = Local::now().date_naive().to_string();
+    
+    // Correctly handle the scope of `entry`
+    let entry_index = data.state.iter().position(|e| e.date == current_date);
+
+    let visitor = match entry_index {
+        Some(index_of_entry) => {
+            // Correctly access the entry
+            let entry = &mut data.state[index_of_entry];
+            entry.counter += 1;
+            entry.time = Local::now().time().to_string();
+            Some(entry.counter)
+        },
+        None => {
+            // Create a new entry if it doesn't exist
+            data.state.push(AppState {
+                date: current_date,
+                counter: 1, // Assuming the first visitor of the day starts with a counter of 1
+                time: Local::now().time().to_string(),
+            });
+            Some(1)
+        },
     };
-    response
+
+    let visitor = if let Some(visitor) = visitor {
+        visitor
+    } else {
+        panic!("visitor number missing");
+    };
+
+    let response = format!("You're visitor no. {}", visitor);
+    Ok(HttpResponse::Ok().content_type("text/html").body(response))
 }
 
 #[get("/last_time")]
@@ -168,7 +187,7 @@ async fn lasttime(data: web::types::State<Arc<Mutex<AppData>>>, req: HttpRequest
     }
 
     let data = &data.try_lock().expect("poisoned_lock").state;
-    let current_data = data.first().expect("Can't get latest entry");
+    let current_data = data.last().expect("Can't get latest entry");
     let time = &current_data.time;
     let date = &current_data.date;
     
@@ -183,26 +202,36 @@ async fn yourtime(data: web::types::State<Arc<Mutex<AppData>>>, session: ntex_se
         return Ok(HttpResponse::Forbidden().finish());
     }
 
-    let mut data = data.try_lock().expect("poisoned_lock");
-    let state: &mut Vec<AppState> = &mut data.state;
-    let mut first = state.first().expect("Can't get latest entry").clone();
+    if ! can_user_enter(session).await? {
+        return Ok(HttpResponse::Ok().finish());
+    }
 
-    let response = if can_user_enter(session).await? {
-        first.time = Local::now().time().to_string();
-        if first.date != Local::now().date_naive().to_string() {
-            state.push(AppState {
-                date: Local::now().date_naive().to_string(),
-                counter: first.counter,
-                time: first.time.clone()
-            })
-        }
-        let response = format!("Time you checked in: {} {}", &first.date, &first.time);
-        Ok(HttpResponse::Ok().content_type("text/html").body(response))
-    } else {
-        Ok(HttpResponse::Ok().finish())
+    let mut data = data.try_lock().expect("poisoned_lock");
+    let current_date = Local::now().date_naive().to_string();
+    let date_matches = data.state.first().map_or(false, |entry| entry.date == current_date);
+
+    let (date, time) = match date_matches {
+        true => {
+            // If the date matches, update the time of the first entry
+            let entry = data.state.first_mut().expect("State is empty");
+            entry.time = Local::now().time().to_string();
+            (entry.date.clone(), entry.time.clone())
+        },
+        false => {
+            // If the date doesn't match, create a new entry for the current date
+            data.state.push(AppState {
+                date: current_date,
+                counter: 1, // Assuming the first visitor of the day starts with a counter of 1
+                time: Local::now().time().to_string(),
+            });
+            let current_date = Local::now().date_naive().to_string();
+            let current_time = Local::now().time().to_string();
+            (current_date, current_time)
+        },
     };
-    
-    response
+    // Update the time
+    let response = format!("Time you checked in: {} {}", &date, &time);
+    Ok(HttpResponse::Ok().content_type("text/html").body(response))    
 }
 
 #[ntex::main]
