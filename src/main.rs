@@ -35,9 +35,11 @@ struct AppData {
 
 #[derive(Clone)]
 struct AppState {
+    last_date: String,
     date: String,
     counter: i32,
     time: String,
+    last_time: String,
 }
 
 impl Default for JsonState {
@@ -153,14 +155,15 @@ async fn visitor(data: web::types::State<Arc<Mutex<AppData>>>, session: ntex_ses
             // Correctly access the entry
             let entry = &mut data.state[index_of_entry];
             entry.counter += 1;
-            entry.time = Local::now().time().to_string();
             Some(entry.counter)
         },
         None => {
             // Create a new entry if it doesn't exist
             data.state.push(AppState {
-                date: current_date,
+                date: current_date.clone(),
+                last_date: current_date,
                 counter: 1, // Assuming the first visitor of the day starts with a counter of 1
+                last_time: Local::now().time().to_string(),
                 time: Local::now().time().to_string(),
             });
             Some(1)
@@ -186,8 +189,8 @@ async fn lasttime(data: web::types::State<Arc<Mutex<AppData>>>, req: HttpRequest
 
     let data = &data.try_lock().expect("poisoned_lock").state;
     let current_data = data.last().expect("Can't get latest entry");
-    let time = &current_data.time;
-    let date = &current_data.date;
+    let time = &current_data.last_time;
+    let date = &current_data.last_date;
     
     let response = format!("Last time someone checked in: {} {}", date, time);
     Ok(HttpResponse::Ok().content_type("text/html").body(response))
@@ -208,27 +211,28 @@ async fn yourtime(data: web::types::State<Arc<Mutex<AppData>>>, session: ntex_se
     let current_date = Local::now().date_naive().to_string();
     let date_matches = data.state.first().map_or(false, |entry| entry.date == current_date);
 
-    let (date, time) = match date_matches {
+    match date_matches {
         true => {
             // If the date matches, update the time of the first entry
             let entry = data.state.first_mut().expect("State is empty");
+            entry.last_time = entry.time.clone();
             entry.time = Local::now().time().to_string();
-            (entry.date.clone(), entry.time.clone())
         },
         false => {
             // If the date doesn't match, create a new entry for the current date
             data.state.push(AppState {
-                date: current_date,
+                date: current_date.clone(),
+                last_date: current_date,
                 counter: 1, // Assuming the first visitor of the day starts with a counter of 1
                 time: Local::now().time().to_string(),
+                last_time: Local::now().time().to_string()
             });
-            let current_date = Local::now().date_naive().to_string();
-            let current_time = Local::now().time().to_string();
-            (current_date, current_time)
         },
     };
     // Update the time
-    let response = format!("Time you checked in: {} {}", &date, &time);
+    let current_time = Local::now().time().to_string();
+    let current_date = Local::now().time().to_string();
+    let response = format!("Time you checked in: {} {}", &current_date, &current_time);
     Ok(HttpResponse::Ok().content_type("text/html").body(response))    
 }
 
@@ -252,9 +256,11 @@ async fn main() -> std::io::Result<()> {
 
     for entry in last_data {
         app_state.push(AppState {
-            date: entry.date,
+            date: entry.date.clone(),
+            last_date: entry.date,
             counter: entry.last_count,
-            time: entry.last_time
+            time: entry.last_time.clone(),
+            last_time: entry.last_time
         })
     }
 
