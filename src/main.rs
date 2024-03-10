@@ -3,7 +3,6 @@ use tokio::sync::Mutex;
 use ntex_session::CookieSession;
 use ntex::web::{self, get, App, Error as WebError, HttpRequest, HttpResponse, HttpServer};
 use serde_json::{from_reader, to_writer};
-use core::panic;
 use std::{
     fs::{create_dir, File},
     path::Path,
@@ -12,7 +11,6 @@ use std::{
 use tracing::{info, debug, trace, error, warn};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-
 use http::{index, files, get_from_subdir};
 
 mod http;
