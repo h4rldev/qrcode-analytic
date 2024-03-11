@@ -231,7 +231,7 @@ async fn yourtime(data: web::types::State<Arc<Mutex<AppData>>>, session: ntex_se
     };
     // Update the time
     let current_time = Local::now().time().to_string();
-    let current_date = Local::now().time().to_string();
+    let current_date = Local::now().date_naive().to_string();
     let response = format!("Time you checked in: {} {}", &current_date, &current_time);
     Ok(HttpResponse::Ok().content_type("text/html").body(response))    
 }
@@ -289,5 +289,5 @@ async fn main() -> std::io::Result<()> {
             .wrap(
                 ntex::web::middleware::Logger::default()
             )
-    }).bind("127.0.0.1:8080")?.run().await
+    }).bind("0.0.0.0:8080")?.run().await
 }
