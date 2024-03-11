@@ -33,4 +33,10 @@ footer {
   .credit-list {
     @apply flex flex-row gap-2 text-lg;
   }
+
+  .people {
+    @apply underline underline-offset-4;
+    @apply decoration-teal-500 hover:decoration-white;
+    @apply transition-colors duration-300 ease-in-out;
+  }
 }
