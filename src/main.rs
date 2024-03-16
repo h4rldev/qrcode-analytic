@@ -1,6 +1,7 @@
-use chrono::{prelude::*, Duration};
 use tokio::sync::Mutex;
+use chrono::{prelude::*, Duration};
 use ntex_session::CookieSession;
+use ntex_helmet::Helmet;
 use ntex::web::{self, get, App, Error as WebError, HttpRequest, HttpResponse, HttpServer};
 use serde_json::{from_reader, to_writer};
 use std::{
@@ -9,50 +10,12 @@ use std::{
 };
 #[allow(unused_imports)]
 use tracing::{info, debug, trace, error, warn};
-use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use http::{index, files, get_from_subdir};
+use data::{AppData, AppState, JsonData, JsonState};
 
 mod http;
-
-#[derive(Serialize, Deserialize, Clone)]
-struct JsonData {
-    state: Vec<JsonState>
-}
-
-
-#[derive(Serialize, Deserialize, Clone)]
-struct JsonState {
-    date: String,
-    last_count: i32,
-    last_time: String,
-}
-
-#[derive(Clone)]
-struct AppData {
-    state: Vec<AppState>
-}
-
-#[derive(Clone)]
-struct AppState {
-    last_date: String,
-    date: String,
-    counter: i32,
-    time: String,
-    last_time: String,
-}
-
-impl Default for JsonState {
-    fn default() -> Self {
-         JsonState { date: Local::now().date_naive().to_string(), last_count: 0_i32, last_time: Local::now().time().to_string()  }
-    }
-}
-
-impl Default for JsonData {
-    fn default() -> Self {
-        JsonData { state: vec![JsonState::default()] }
-    }
-}
+mod data;
 
 async fn can_user_enter(session: ntex_session::Session) -> Result<bool, WebError> {
     if session.get::<String>("session_time")?.is_some() {
