@@ -1,7 +1,6 @@
 use tokio::sync::Mutex;
 use chrono::{prelude::*, Duration};
 use ntex_session::CookieSession;
-use ntex_helmet::Helmet;
 use ntex::web::{self, get, App, Error as WebError, HttpRequest, HttpResponse, HttpServer};
 use serde_json::{from_reader, to_writer};
 use std::{
@@ -11,7 +10,7 @@ use std::{
 #[allow(unused_imports)]
 use tracing::{info, debug, trace, error, warn};
 use std::sync::Arc;
-use http::{index, files, get_from_subdir};
+use http::{index, files, get_from_subdir, privacy};
 use data::{AppData, AppState, JsonData, JsonState};
 
 mod http;
@@ -235,10 +234,11 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         App::new()
             .wrap(web::middleware::Compress::default())
-            .service(header)
             .service(index)
+            .service(privacy)
             .service(
-                web::scope("/body")
+                web::scope("/api")
+                    .service(header)
                     .service(visitor)
                     .service(lasttime)
                     .service(yourtime)

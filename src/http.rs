@@ -2,25 +2,44 @@ use ntex::web::{get, Error as WebError, HttpRequest, HttpResponse};
 use ntex_files::NamedFile;
 use std::{fs::File, io::Read, path::{Path, PathBuf}};
 
+async fn fourofour(mut content: String) -> Result<HttpResponse, WebError> {
+    let fourofour_path = Path::new("./404.html");
+
+    if fourofour_path.is_file() {
+        let mut fourofour_file = File::open(fourofour_path)?;
+        fourofour_file.read_to_string(&mut content)?;
+        return Ok(HttpResponse::NotFound().content_type("text/html").body(content));
+    }
+
+    return Ok(HttpResponse::NotFound().content_type("text/html").body("<h1> 404 Not Found <h1>"));    
+}
+
 #[get("/")]
 pub async fn index() -> Result<HttpResponse, WebError> {
     let mut content = String::new();
     let index_path = Path::new("./index.html");
-    let fourofour_path = Path::new("./404.html");
 
     if index_path.is_file() {
         let mut file = File::open(index_path)?;
         file.read_to_string(&mut content)?;
         return Ok(HttpResponse::Ok().content_type("text/html").body(content));
     }
-    
-    if fourofour_path.is_file() {
-        let mut fourofour_file = File::open(fourofour_path)?;
-        fourofour_file.read_to_string(&mut content)?;
-        return Ok(HttpResponse::NotFound().content_type("text/html").body(content));
+   
+    return fourofour(content).await
+}
+
+#[get("/privacy")]
+pub async fn privacy() -> Result<HttpResponse, WebError> {
+    let mut content = String::new();
+    let privacy_path = Path::new("./privacy.html");
+
+    if privacy_path.is_file() {
+        let mut file = File::open(privacy_path)?;
+        file.read_to_string(&mut content)?;
+        return Ok(HttpResponse::Ok().content_type("text/html").body(content));
     }
-    
-    return Ok(HttpResponse::NotFound().content_type("text/html").body("<h1> 404 Not Found <h1>"));    
+
+    return fourofour(content).await
 }
 
 pub async fn files(req: HttpRequest) -> Result<HttpResponse, ntex::web::Error> {
